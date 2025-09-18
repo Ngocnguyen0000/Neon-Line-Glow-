@@ -1,0 +1,5 @@
+{
+  "name": "Neonify SVG",
+  "description": "A web-based tool to add a stunning neon glow effect to your SVG files. Upload an SVG, tweak parameters like color, intensity, and width in real-time, and download the 'neonified' result.",
+  "requestFramePermissions": []
+}
