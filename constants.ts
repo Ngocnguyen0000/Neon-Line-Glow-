@@ -1,4 +1,4 @@
-import type { NeonOptions } from './types';
+import type { NeonOptions, ExportOptions } from './types';
 
 export const DEFAULT_OPTIONS: NeonOptions = {
   color: '#00ffd5',
@@ -10,6 +10,12 @@ export const DEFAULT_OPTIONS: NeonOptions = {
   scaleAware: true,
   multiColor: false,
   midColor: '#ff00d0',
+};
+
+export const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
+  width: 160,
+  height: 160,
+  backgroundColor: '#000000',
 };
 
 export const NEON_PRESETS = [

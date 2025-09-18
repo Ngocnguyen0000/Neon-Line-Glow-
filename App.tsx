@@ -4,12 +4,16 @@ import { Header } from './components/Header';
 import { ControlsPanel } from './components/ControlsPanel';
 import { SvgPreview } from './components/SvgPreview';
 import { FileUpload } from './components/FileUpload';
-import type { NeonOptions } from './types';
-import { DEFAULT_OPTIONS } from './constants';
+import type { NeonOptions, ExportOptions } from './types';
+import { DEFAULT_OPTIONS, DEFAULT_EXPORT_OPTIONS } from './constants';
 import { processSvg } from './services/svgProcessor';
 
 export default function App() {
   const [options, setOptions] = useState<NeonOptions>(DEFAULT_OPTIONS);
+  const [exportOptions, setExportOptions] = useState<ExportOptions>(DEFAULT_EXPORT_OPTIONS);
+  const [backgroundImageFile, setBackgroundImageFile] = useState<File | null>(null);
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
+
   const [originalSvg, setOriginalSvg] = useState<string | null>(null);
   const [processedSvg, setProcessedSvg] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -36,6 +40,21 @@ export default function App() {
     }
   };
 
+  const handleBackgroundImageChange = (file: File | null) => {
+    if (backgroundImageUrl) {
+      URL.revokeObjectURL(backgroundImageUrl);
+    }
+
+    if (file) {
+      setBackgroundImageFile(file);
+      setBackgroundImageUrl(URL.createObjectURL(file));
+    } else {
+      setBackgroundImageFile(null);
+      setBackgroundImageUrl(null);
+    }
+  };
+
+
   const processAndSetSvg = useCallback(async () => {
     if (!originalSvg) return;
 
@@ -43,7 +62,6 @@ export default function App() {
     setError(null);
     setWarnings([]);
 
-    // Give browser a moment to update isLoading state before heavy processing
     await new Promise(resolve => setTimeout(resolve, 10));
 
     try {
@@ -53,7 +71,7 @@ export default function App() {
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred during SVG processing.';
       setError(`Processing Error: ${errorMessage}`);
-      setProcessedSvg(originalSvg); // Show original on error
+      setProcessedSvg(originalSvg);
     } finally {
       setIsLoading(false);
     }
@@ -63,13 +81,53 @@ export default function App() {
     processAndSetSvg();
   }, [processAndSetSvg]);
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!processedSvg) return;
-    const blob = new Blob([processedSvg], { type: 'image/svg+xml' });
+
+    const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = error => reject(error);
+    });
+
+    let bgImageElement = '';
+    if (backgroundImageFile) {
+        try {
+            const base64 = await toBase64(backgroundImageFile);
+            bgImageElement = `<image href="${base64}" x="0" y="0" height="100%" width="100%" preserveAspectRatio="xMidYMid slice" />`;
+        } catch (err) {
+            console.error("Error converting background image to base64", err);
+            setError("Could not process the background image for download.");
+            return;
+        }
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(processedSvg, "image/svg+xml");
+    const originalSvgNode = doc.querySelector('svg');
+
+    if (!originalSvgNode) {
+        setError("Could not parse the generated SVG for download.");
+        return;
+    }
+
+    const innerSvgContent = originalSvgNode.innerHTML;
+    const originalViewBox = originalSvgNode.getAttribute('viewBox') || `0 0 ${exportOptions.width} ${exportOptions.height}`;
+
+    const finalSvgString = `<svg width="${exportOptions.width}" height="${exportOptions.height}" viewBox="0 0 ${exportOptions.width} ${exportOptions.height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <rect width="100%" height="100%" fill="${exportOptions.backgroundColor}" />
+  ${bgImageElement}
+  <svg x="0" y="0" width="100%" height="100%" viewBox="${originalViewBox}" preserveAspectRatio="xMidYMid meet">
+    ${innerSvgContent}
+  </svg>
+</svg>`;
+
+    const blob = new Blob([finalSvgString.trim()], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'neonified.svg';
+    a.download = 'neonified-export.svg';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -82,7 +140,9 @@ export default function App() {
     setWarnings([]);
     setError(null);
     setOptions(DEFAULT_OPTIONS);
-    // This is a bit of a hack to reset the file input visually
+    setExportOptions(DEFAULT_EXPORT_OPTIONS);
+    handleBackgroundImageChange(null);
+    
     const fileInput = document.getElementById('svg-upload') as HTMLInputElement;
     if (fileInput) {
         fileInput.value = '';
@@ -97,7 +157,11 @@ export default function App() {
         <div className="lg:col-span-1 xl:col-span-1 bg-gray-800/50 rounded-lg shadow-2xl p-4 overflow-y-auto">
           <ControlsPanel 
             options={options} 
-            setOptions={setOptions} 
+            setOptions={setOptions}
+            exportOptions={exportOptions}
+            setExportOptions={setExportOptions}
+            onBackgroundImageChange={handleBackgroundImageChange}
+            backgroundImageFile={backgroundImageFile}
             onDownload={handleDownload} 
             onClear={handleClear}
             hasContent={!!originalSvg} 
@@ -105,7 +169,12 @@ export default function App() {
         </div>
         <div className="lg:col-span-2 xl:col-span-3 bg-gray-800/50 rounded-lg shadow-2xl flex flex-col items-center justify-center p-4 min-h-[60vh] lg:min-h-0">
           {originalSvg ? (
-            <SvgPreview svgContent={processedSvg} isLoading={isLoading} />
+            <SvgPreview 
+              svgContent={processedSvg} 
+              isLoading={isLoading} 
+              backgroundColor={exportOptions.backgroundColor}
+              backgroundImageUrl={backgroundImageUrl}
+            />
           ) : (
             <FileUpload onFileChange={handleFileChange} />
           )}

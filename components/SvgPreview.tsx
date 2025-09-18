@@ -4,11 +4,21 @@ import React from 'react';
 interface SvgPreviewProps {
   svgContent: string | null;
   isLoading: boolean;
+  backgroundColor: string;
+  backgroundImageUrl: string | null;
 }
 
-export const SvgPreview: React.FC<SvgPreviewProps> = ({ svgContent, isLoading }) => {
+export const SvgPreview: React.FC<SvgPreviewProps> = ({ svgContent, isLoading, backgroundColor, backgroundImageUrl }) => {
+  const previewStyle: React.CSSProperties = {
+    backgroundColor: backgroundColor,
+    backgroundImage: backgroundImageUrl ? `url(${backgroundImageUrl})` : 'none',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+  };
+
   return (
-    <div className="w-full h-full relative flex items-center justify-center bg-black/20 rounded-md p-4">
+    <div className="w-full h-full relative flex items-center justify-center rounded-md p-4 transition-colors" style={previewStyle}>
       {isLoading && (
         <div className="absolute inset-0 bg-gray-900/50 flex items-center justify-center z-10 rounded-md">
           <svg className="animate-spin h-10 w-10 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
