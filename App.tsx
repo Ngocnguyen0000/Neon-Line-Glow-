@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Header } from './components/Header';
 import { ControlsPanel } from './components/ControlsPanel';
@@ -81,8 +80,8 @@ export default function App() {
     processAndSetSvg();
   }, [processAndSetSvg]);
 
-  const handleDownload = async () => {
-    if (!processedSvg) return;
+  const generateFinalSvgString = async (): Promise<string | null> => {
+    if (!processedSvg) return null;
 
     const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -99,7 +98,7 @@ export default function App() {
         } catch (err) {
             console.error("Error converting background image to base64", err);
             setError("Could not process the background image for download.");
-            return;
+            return null;
         }
     }
 
@@ -109,19 +108,24 @@ export default function App() {
 
     if (!originalSvgNode) {
         setError("Could not parse the generated SVG for download.");
-        return;
+        return null;
     }
 
     const innerSvgContent = originalSvgNode.innerHTML;
     const originalViewBox = originalSvgNode.getAttribute('viewBox') || `0 0 ${exportOptions.width} ${exportOptions.height}`;
 
-    const finalSvgString = `<svg width="${exportOptions.width}" height="${exportOptions.height}" viewBox="0 0 ${exportOptions.width} ${exportOptions.height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    return `<svg width="${exportOptions.width}" height="${exportOptions.height}" viewBox="0 0 ${exportOptions.width} ${exportOptions.height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <rect width="100%" height="100%" fill="${exportOptions.backgroundColor}" />
   ${bgImageElement}
   <svg x="0" y="0" width="100%" height="100%" viewBox="${originalViewBox}" preserveAspectRatio="xMidYMid meet">
     ${innerSvgContent}
   </svg>
 </svg>`;
+  };
+
+  const handleDownloadSvg = async () => {
+    const finalSvgString = await generateFinalSvgString();
+    if (!finalSvgString) return;
 
     const blob = new Blob([finalSvgString.trim()], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
@@ -132,6 +136,56 @@ export default function App() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadRaster = async (format: 'png' | 'webp') => {
+    setIsLoading(true);
+    setError(null);
+    try {
+        const finalSvgString = await generateFinalSvgString();
+        if (!finalSvgString) {
+          setIsLoading(false);
+          return;
+        };
+
+        const canvas = document.createElement('canvas');
+        canvas.width = exportOptions.width;
+        canvas.height = exportOptions.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            throw new Error("Could not get canvas context");
+        }
+
+        const img = new Image();
+        const svgBlob = new Blob([finalSvgString], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(svgBlob);
+
+        img.onload = () => {
+            ctx.drawImage(img, 0, 0, exportOptions.width, exportOptions.height);
+            URL.revokeObjectURL(url);
+            
+            const dataUrl = canvas.toDataURL(`image/${format}`);
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = `neonified-export.${format}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setIsLoading(false);
+        };
+
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            throw new Error(`Failed to load SVG into image for ${format.toUpperCase()} conversion.`);
+        };
+
+        img.src = url;
+
+    } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : `An unknown error occurred during ${format.toUpperCase()} export.`;
+        setError(errorMessage);
+        setIsLoading(false);
+    }
   };
   
   const handleClear = () => {
@@ -162,7 +216,9 @@ export default function App() {
             setExportOptions={setExportOptions}
             onBackgroundImageChange={handleBackgroundImageChange}
             backgroundImageFile={backgroundImageFile}
-            onDownload={handleDownload} 
+            onDownloadSvg={handleDownloadSvg} 
+            onDownloadPng={() => handleDownloadRaster('png')}
+            onDownloadWebp={() => handleDownloadRaster('webp')}
             onClear={handleClear}
             hasContent={!!originalSvg} 
           />

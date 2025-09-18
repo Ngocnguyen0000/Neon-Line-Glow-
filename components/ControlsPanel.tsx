@@ -12,7 +12,9 @@ interface ControlsPanelProps {
   setExportOptions: React.Dispatch<React.SetStateAction<ExportOptions>>;
   onBackgroundImageChange: (file: File | null) => void;
   backgroundImageFile: File | null;
-  onDownload: () => void;
+  onDownloadSvg: () => void;
+  onDownloadPng: () => void;
+  onDownloadWebp: () => void;
   onClear: () => void;
   hasContent: boolean;
 }
@@ -33,7 +35,7 @@ const NumberInput: React.FC<{label: string, value: number, onChange: (e: React.C
 );
 
 
-export const ControlsPanel: React.FC<ControlsPanelProps> = ({ options, setOptions, exportOptions, setExportOptions, onBackgroundImageChange, backgroundImageFile, onDownload, onClear, hasContent }) => {
+export const ControlsPanel: React.FC<ControlsPanelProps> = ({ options, setOptions, exportOptions, setExportOptions, onBackgroundImageChange, backgroundImageFile, onDownloadSvg, onDownloadPng, onDownloadWebp, onClear, hasContent }) => {
   const handleOptionChange = <K extends keyof NeonOptions,>(key: K, value: NeonOptions[K]) => {
     setOptions(prev => ({ ...prev, [key]: value }));
   };
@@ -138,13 +140,29 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({ options, setOption
 
       <div className="flex-shrink-0 pt-6 border-t border-gray-700 space-y-3">
         <button
-          onClick={onDownload}
+          onClick={onDownloadSvg}
           disabled={!hasContent}
-          className="w-full flex items-center justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-cyan-500 transition-colors"
+          className="w-full flex items-center justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-cyan-500 transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
           Download SVG
         </button>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={onDownloadPng}
+            disabled={!hasContent}
+            className="w-full flex items-center justify-center py-2 px-4 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-200 bg-gray-700/50 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-gray-500 transition-colors"
+          >
+            Download PNG
+          </button>
+          <button
+            onClick={onDownloadWebp}
+            disabled={!hasContent}
+            className="w-full flex items-center justify-center py-2 px-4 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-200 bg-gray-700/50 hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-gray-500 transition-colors"
+          >
+            Download WEBP
+          </button>
+        </div>
         <button
           onClick={onClear}
           disabled={!hasContent}
